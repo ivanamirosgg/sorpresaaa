@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Expediente Arkham — Un juego de Acertijo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Cinzel:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#efe6cd;
+    --paper-dark:#ddccA0;
+    --ink:#241d2e;
+    --ink-soft:#5a5138;
+    --riddler-green:#3fa620;
+    --riddler-green-dark:#276b12;
+    --riddler-green-glow:#8fe36a;
+    --riddler-purple:#6b2fa0;
+    --riddler-purple-dark:#4a1f70;
+    --riddler-purple-glow:#c79bf0;
+    --gold:#c9a227;
+    --bg:#100b16;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(ellipse at 15% -10%, rgba(107,47,160,0.18), transparent 45%),
+      radial-gradient(ellipse at 85% 105%, rgba(63,166,32,0.14), transparent 45%),
+      var(--bg);
+    font-family:'Special Elite', monospace;
+    color:var(--ink);
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:32px 16px 64px;
+  }
+  .question-marks{
+    position:fixed;
+    inset:0;
+    z-index:0;
+    pointer-events:none;
+    opacity:0.5;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><text x='6' y='108' font-size='108' fill='%233fa620' opacity='0.10' font-family='Georgia, serif'>?</text></svg>");
+    background-repeat:repeat;
+    background-size:140px 140px;
+  }
+  .question-marks::after{
+    content:'';
+    position:absolute;
+    inset:0;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='190' height='190'><text x='70' y='40' font-size='60' fill='%236b2fa0' opacity='0.12' font-family='Georgia, serif'>?</text></svg>");
+    background-repeat:repeat;
+    background-size:190px 190px;
+  }
+  .stage{
+    position:relative;
+    z-index:1;
+    width:100%;
+    max-width:560px;
+  }
+  .studrow{
+    display:flex;
+    gap:8px;
+    padding:10px 14px;
+    background:var(--ink);
+  }
+  .studrow span{
+    width:12px;
+    height:12px;
+    border-radius:50%;
+    display:inline-block;
+  }
+  .folder{
+    position:relative;
+    background:var(--paper);
+    background-image:
+      repeating-linear-gradient(0deg, rgba(90,81,56,0.03) 0px, transparent 2px, transparent 4px);
+    border:1px solid var(--paper-dark);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.6), 0 2px 0 rgba(255,255,255,0.15) inset;
+    padding:32px 32px 34px;
+    min-height:440px;
+  }
+  .tabs{
+    display:flex;
+    gap:4px;
+    margin-bottom:16px;
+    flex-wrap:wrap;
+  }
+  .tab{
+    font-family:'Cinzel', serif;
+    font-size:11px;
+    letter-spacing:0.05em;
+    padding:4px 9px;
+    border:1px solid var(--riddler-purple-dark);
+    color:var(--riddler-purple-dark);
+    background:rgba(107,47,160,0.05);
+  }
+  .tab.done{
+    background:var(--riddler-purple);
+    color:var(--riddler-green-glow);
+    border-color:var(--riddler-purple);
+  }
+  .tab.current{
+    background:var(--ink);
+    color:var(--riddler-green-glow);
+    border-color:var(--ink);
+  }
+  .stamp{
+    position:absolute;
+    top:20px;
+    right:22px;
+    border:3px solid var(--riddler-purple);
+    color:var(--riddler-purple);
+    font-family:'Cinzel', serif;
+    font-weight:700;
+    font-size:11px;
+    letter-spacing:0.12em;
+    padding:5px 10px;
+    transform:rotate(8deg);
+    opacity:0.8;
+    pointer-events:none;
+    user-select:none;
+  }
+  .kicker{
+    font-family:'Cinzel', serif;
+    font-size:12px;
+    letter-spacing:0.18em;
+    color:var(--riddler-purple);
+    margin:0 0 4px;
+    text-transform:uppercase;
+  }
+  .manual-step{
+    font-size:11px;
+    color:var(--ink-soft);
+    letter-spacing:0.05em;
+    margin:0 0 12px;
+    font-style:italic;
+  }
+  .villain-tag{
+    display:inline-block;
+    font-size:12px;
+    color:var(--riddler-green-dark);
+    background:rgba(63,166,32,0.12);
+    border:1px solid rgba(63,166,32,0.3);
+    padding:3px 9px;
+    margin:0 0 16px;
+    font-style:italic;
+  }
+  h1{
+    font-family:'Cinzel', serif;
+    font-size:26px;
+    margin:0 0 16px;
+    color:var(--ink);
+    line-height:1.25;
+  }
+  .cane-divider{
+    width:64px;
+    height:14px;
+    margin:0 0 18px;
+    display:block;
+  }
+  .riddle-text{
+    font-size:18px;
+    line-height:1.85;
+    white-space:pre-line;
+    margin:0 0 18px;
+    color:var(--ink);
+    border-left:4px solid var(--riddler-green);
+    padding-left:16px;
+  }
+  .brick-divider{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin:0 0 20px;
+    opacity:0.85;
+  }
+  .brick-divider .line{
+    flex:1;
+    height:1px;
+    background:var(--paper-dark);
+  }
+  input[type=text]{
+    width:100%;
+    font-family:'Special Elite', monospace;
+    font-size:16px;
+    padding:12px 14px;
+    border:none;
+    border-bottom:2px solid var(--riddler-purple-dark);
+    background:transparent;
+    color:var(--ink);
+    outline:none;
+  }
+  input[type=text]:focus{
+    border-bottom-color:var(--riddler-green);
+  }
+  .row{
+    display:flex;
+    gap:10px;
+    margin-top:18px;
+    flex-wrap:wrap;
+    align-items:center;
+  }
+  button{
+    font-family:'Cinzel', serif;
+    font-size:13px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    padding:12px 22px;
+    background:var(--riddler-purple);
+    color:var(--riddler-green-glow);
+    border:1px solid var(--riddler-purple-dark);
+    cursor:pointer;
+  }
+  button:hover{ background:var(--riddler-purple-dark); }
+  button.ghost{
+    background:transparent;
+    color:var(--riddler-purple-dark);
+    border:1px solid var(--riddler-purple-dark);
+  }
+  button.ghost:hover{ color:var(--ink); border-color:var(--ink); }
+  .feedback{
+    margin-top:16px;
+    font-size:14px;
+    min-height:20px;
+  }
+  .feedback.wrong{ color:var(--riddler-purple-dark); }
+  .feedback.right{ color:var(--riddler-green-dark); font-weight:bold; }
+  .err{ color:#8b2020; font-size:13px; margin-top:8px; display:none; }
+  .hint-toggle{
+    background:none;
+    border:none;
+    color:var(--ink-soft);
+    text-decoration:underline;
+    padding:0;
+    font-size:13px;
+    letter-spacing:normal;
+    text-transform:none;
+    margin-top:14px;
+    cursor:pointer;
+  }
+  .hint-text{
+    display:none;
+    margin-top:8px;
+    font-size:14px;
+    color:var(--ink-soft);
+    font-style:italic;
+  }
+  .intro-art, .reveal-art{
+    text-align:center;
+    margin-bottom:14px;
+  }
+  .final-box{
+    background:var(--riddler-purple-dark);
+    color:var(--paper);
+    padding:24px 20px;
+    text-align:center;
+    margin-top:8px;
+    border:2px solid var(--riddler-green);
+  }
+  .final-box p{ font-size:17px; line-height:1.7; margin:14px 0 0; }
+  .final-stats{
+    display:flex;
+    justify-content:center;
+    gap:14px;
+    flex-wrap:wrap;
+    margin-top:16px;
+    font-size:11px;
+    letter-spacing:0.06em;
+    color:var(--riddler-green-glow);
+    font-family:'Cinzel', serif;
+  }
+  .progress-note{
+    font-size:12px;
+    color:var(--paper-dark);
+    margin-top:22px;
+    text-align:center;
+    letter-spacing:0.02em;
+  }
+  @media (max-width:480px){
+    .folder{ padding:26px 20px 26px; }
+    h1{ font-size:22px; }
+    .riddle-text{ font-size:16px; }
+    .stamp{ font-size:9px; padding:4px 7px; top:16px; right:16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="question-marks"></div>
+
+<div class="stage">
+  <div class="studrow" id="studrow"></div>
+  <div class="folder">
+    <div class="stamp">CONFIDENCIAL</div>
+    <div class="tabs" id="tabs"></div>
+    <div id="content"></div>
+  </div>
+  <p class="progress-note" id="progressNote"></p>
+</div>
+
+<script>
+function normalize(s){
+  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9 ]/g,'').trim();
+}
+
+var bowlerHatSVG = '<svg width="86" height="70" viewBox="0 0 86 70" xmlns="http://www.w3.org/2000/svg">' +
+  '<ellipse cx="43" cy="60" rx="42" ry="8" fill="#241d2e" opacity="0.15"/>' +
+  '<path d="M8 52 Q8 20 43 14 Q78 20 78 52 Z" fill="#3fa620" stroke="#241d2e" stroke-width="2"/>' +
+  '<rect x="6" y="48" width="74" height="12" rx="3" fill="#3fa620" stroke="#241d2e" stroke-width="2"/>' +
+  '<rect x="6" y="48" width="74" height="12" fill="#6b2fa0"/>' +
+  '<text x="43" y="58" font-family="Cinzel, serif" font-size="12" font-weight="700" fill="#c9a227" text-anchor="middle">?</text>' +
+  '</svg>';
+
+var caneSVG = '<svg width="64" height="14" viewBox="0 0 64 14" xmlns="http://www.w3.org/2000/svg">' +
+  '<path d="M2 12 L46 12" stroke="#6b2fa0" stroke-width="3" stroke-linecap="round"/>' +
+  '<path d="M46 12 C46 4, 58 2, 58 8 C58 12, 52 12, 50 9" fill="none" stroke="#c9a227" stroke-width="3" stroke-linecap="round"/>' +
+  '</svg>';
+
+function brickSVG(color){
+  return '<svg width="46" height="26" viewBox="0 0 46 26" xmlns="http://www.w3.org/2000/svg">' +
+    '<rect x="2" y="10" width="42" height="14" rx="1" fill="' + color + '" stroke="#241d2e" stroke-width="1.5"/>' +
+    '<circle cx="10" cy="8" r="4" fill="' + color + '" stroke="#241d2e" stroke-width="1.5"/>' +
+    '<circle cx="23" cy="8" r="4" fill="' + color + '" stroke="#241d2e" stroke-width="1.5"/>' +
+    '<circle cx="36" cy="8" r="4" fill="' + color + '" stroke="#241d2e" stroke-width="1.5"/>' +
+    '</svg>';
+}
+
+function batSignalSVG(){
+  return '<svg width="70" height="70" viewBox="0 0 70 70" xmlns="http://www.w3.org/2000/svg">' +
+    '<circle cx="35" cy="35" r="33" fill="none" stroke="#c9a227" stroke-width="1.5" opacity="0.5"/>' +
+    '<path d="M35 20 C30 20 27 24 27 24 C27 24 20 22 18 27 C18 27 24 30 24 30 C24 30 15 33 17 39 C17 39 25 36 25 36 C25 36 20 44 26 47 C26 47 29 39 29 39 C29 39 30 48 35 48 C40 48 41 39 41 39 C41 39 44 47 47 47 C53 44 48 36 48 36 C48 36 56 39 56 39 C58 33 49 30 49 30 C49 30 55 27 55 27 C53 22 46 24 46 24 C46 24 43 20 38 20 C37 20 36 20 35 20 Z" fill="#c9a227" opacity="0.85"/>' +
+    '</svg>';
+}
+
+function buildStuds(){
+  var row = document.getElementById('studrow');
+  var colors = ['#3fa620','#6b2fa0','#3fa620','#6b2fa0','#c9a227','#3fa620','#6b2fa0','#3fa620','#6b2fa0','#c9a227'];
+  row.innerHTML = colors.map(function(c){ return '<span style="background:'+c+'"></span>'; }).join('');
+}
+
+var stages = [
+  { type: 'intro' },
+  {
+    id: 1,
+    kicker: 'Expediente 01 · El escondite',
+    manualStep: 'Manual de instrucciones · página 018 de 214',
+    accent: '#3fa620',
+    title: 'Primer acertijo',
+    riddle: 'Tengo rejas, mas no soy una cárcel de verdad,\nguardo la locura, el rencor y la maldad.\nJoker, Bane y el Pingüino duermen bajo mi nombre,\n¿qué lugar soy yo, que hasta al murciélago asombre?',
+    answers: ['arkham', 'arkham asylum', 'asilo', 'el asilo', 'asilo arkham'],
+    hint: 'Está impreso en letras grandes sobre la caja de instrucciones. Más cerca de Gotham de lo que crees.',
+    wrongLines: [
+      '"No, no, no... piensa un poco más." — Acertijo',
+      '"Tan cerca y tan lejos a la vez." — Acertijo',
+      '"Hasta Alfred lo sabría con los ojos cerrados." — Acertijo'
+    ]
+  },
+  {
+    id: 2,
+    kicker: 'Expediente 02 · El anfitrión',
+    manualStep: 'Manual de instrucciones · página 042 de 214',
+    accent: '#6b2fa0',
+    title: 'Segundo acertijo',
+    riddle: 'Visto de verde, cargo un bastón con orgullo,\ny cada frase mía es un pequeño embrollo.\nA Batman lo vuelvo loco sin dar un solo golpe,\n¿quién soy yo, que con preguntas al mundo sorprende?',
+    answers: ['acertijo', 'enigma', 'riddler', 'el acertijo', 'el enigma'],
+    hint: 'Soy quien te está hablando ahora mismo. Hasta la Batcomputadora me tiene fichado.',
+    wrongLines: [
+      '"Vaya, ¿ni siquiera me reconoces?" — Acertijo',
+      '"Estoy literalmente hablándote en este momento." — Acertijo',
+      '"¿Ya llamaste a la batiseñal pidiendo ayuda?" — Acertijo'
+    ]
+  },
+  {
+    id: 3,
+    kicker: 'Expediente 03 · Los reclusos',
+    manualStep: 'Manual de instrucciones · página 077 de 214',
+    accent: '#c9a227',
+    title: 'Tercer acertijo',
+    riddle: 'Somos dieciséis entre héroes y villanos,\ntodo Gotham cabe entre nuestras manos.\nDe plástico y color, pero grandes en fama,\n¿cómo nos llama quien con ladrillos arma?',
+    answers: ['minifiguras', 'minifiguras lego', 'las minifiguras', 'figuras'],
+    hint: 'Somos pequeñas, de plástico, y venimos 16 dentro de la caja. Ni la mansión Wayne tiene tanta gente junta.',
+    wrongLines: [
+      '"Frío, muy frío... como la celda de Mr. Freeze." — Acertijo',
+      '"Piensa en pequeño. Literalmente." — Acertijo',
+      '"Ni el comisionado Gordon tardaría tanto." — Acertijo'
+    ]
+  },
+  {
+    id: 4,
+    kicker: 'Expediente 04 · El encierro',
+    manualStep: 'Manual de instrucciones · página 129 de 214',
+    accent: '#1f7aa6',
+    title: 'Cuarto acertijo',
+    riddle: 'Cada preso tiene su propio rincón,\ncon puertas que corren, no que giran de un tirón.\nAhí el Joker espera, ahí Harley sonríe,\n¿qué somos, que a cada villano su espacio confié?',
+    answers: ['celdas', 'las celdas', 'celdas correderas', 'puertas correderas', 'las puertas correderas'],
+    hint: 'No nos abrimos como una puerta normal: nos deslizamos hacia un lado. Ni Alfred tocaría antes de pasar.',
+    wrongLines: [
+      '"Frío... como el encierro de Mr. Freeze." — Acertijo',
+      '"Piensa en dónde duermen los villanos por las noches." — Acertijo',
+      '"No es la fuga, es justo lo contrario." — Acertijo'
+    ]
+  },
+  {
+    id: 5,
+    kicker: 'Expediente 05 · La verdad',
+    manualStep: 'Manual de instrucciones · página 168 de 214',
+    accent: '#6b2fa0',
+    title: 'Quinto acertijo',
+    riddle: 'Mi juego casi termina, ya no hablo de Gotham ni de mí,\nhablo de alguien que te ama y te lo dice así:\ncada acertijo que resolviste, cada pista que uniste,\nfue solo un camino hacia lo que hoy conseguiste.\n\n¿Qué es lo que se esconde, envuelto y en secreto,\nesperando tus manos, con cariño en cada objeto?',
+    answers: ['mi regalo', 'el regalo', 'tu regalo', 'regalo', 'lego', 'arkham asylum lego'],
+    hint: 'No es un lugar de Gotham. Es lo que llevas semanas persiguiendo en este juego.',
+    wrongLines: [
+      '"Ya no soy yo quien pregunta, es tu corazón." — Acertijo',
+      '"Está más cerca de lo que crees." — Acertijo'
+    ]
+  },
+  {
+    id: 6,
+    kicker: 'Expediente final · La última pista',
+    manualStep: 'Manual de instrucciones · página 214 de 214 (la última)',
+    accent: '#b5651d',
+    title: 'El último acertijo',
+    riddle: 'Ya sabes qué es, pero aún no sabes dónde.\nEn Arkham cada preso guarda su rincón,\nun pequeño mundo que es su única prisión.\nTú también tienes uno, aunque libre como el viento,\n¿cómo se llama el lugar de tu descanso y tu silencio?',
+    answers: ['tu cuarto', 'mi cuarto', 'recamara', 'tu recamara', 'habitacion', 'tu habitacion', 'cuarto', 'mi habitacion'],
+    hint: 'No necesitas escapar de este: es donde duermes cada noche.',
+    wrongLines: [
+      '"No es una celda de Arkham, es más cómoda que eso." — Acertijo',
+      '"Piensa en dónde cuelgas tu ropa, no tus esposas." — Acertijo',
+      '"Ni Alfred te haría la cama en otro lugar." — Acertijo'
+    ]
+  },
+  { type: 'reveal' }
+];
+
+var current = 0;
+
+function renderTabs(){
+  var tabs = document.getElementById('tabs');
+  tabs.innerHTML = '';
+  var puzzleStages = stages.filter(function(s){ return s.id; });
+  puzzleStages.forEach(function(s){
+    var idx = stages.indexOf(s);
+    var el = document.createElement('div');
+    el.className = 'tab' + (idx < current ? ' done' : '') + (idx === current ? ' current' : '');
+    el.textContent = '0' + s.id;
+    tabs.appendChild(el);
+  });
+}
+
+function renderProgress(){
+  var note = document.getElementById('progressNote');
+  var puzzleStages = stages.filter(function(s){ return s.id; });
+  if(current === 0 || current > puzzleStages.length){
+    note.textContent = '';
+  } else {
+    note.textContent = 'Acertijo ' + puzzleStages[current-1].id + ' de ' + puzzleStages.length;
+  }
+}
+
+function renderIntro(){
+  var c = document.getElementById('content');
+  c.innerHTML =
+    '<div class="intro-art">' + bowlerHatSVG + '</div>' +
+    '<p class="kicker">Departamento de casos irresueltos</p>' +
+    '<h1>Bienvenido a mi pequeño juego</h1>' +
+    '<div class="cane-divider">' + caneSVG + '</div>' +
+    '<p class="riddle-text">Ah... veo que has llegado hasta aquí. Qué considerado de tu parte.\n\nAlguien que te quiere mucho me ha pedido prestar mi nombre, mi sombrero y mi bastón para un juego. Desde las sombras de la Batcueva hasta los pasillos de la mansión Wayne, nadie ha logrado vencerme sin ayuda... pero hoy haré una excepción contigo.\n\nSeis acertijos, todos mis viejos amigos de Arkham y 2,953 piezas de por medio se interponen entre tú y algo que ni Batman lograría encontrar sin ayuda.\n\nResuélvelos uno a uno. O quédate por siempre atrapado en la duda.</p>' +
+    '<div class="row"><button onclick="goTo(1)">Aceptar el desafío</button>' + batSignalSVG() + '</div>';
+}
+
+function renderReveal(){
+  var c = document.getElementById('content');
+  c.innerHTML =
+    '<div class="reveal-art">' + bowlerHatSVG + '</div>' +
+    '<p class="kicker">Caso cerrado</p>' +
+    '<h1>Has resuelto todos mis acertijos</h1>' +
+    '<div class="final-box">' +
+      '<p>Feliz cumpleaños, chokis ♥<br>Tu Arkham Asylum te está esperando en tu cuarto.</p>' +
+      '<div class="final-stats"><span>2,953 piezas</span><span>16 minifiguras</span><span>65 pegatinas</span><span>1 corazón dedicado</span></div>' +
+    '</div>' +
+    '<div class="brick-divider"><span class="line"></span>' + brickSVG('#3fa620') + brickSVG('#6b2fa0') + brickSVG('#c9a227') + '<span class="line"></span></div>' +
+    '<p class="riddle-text" style="margin-top:4px;">Ni el villano más brillante de Gotham podría haber preparado esto mejor que quien te ama en la vida real. Ni Alfred, ni el Comisionado Gordon, ni siquiera Batman.\n\nTe amo, disfruta tu regalo :)</p>' +
+    '<div class="row"><button class="ghost" onclick="goTo(0)">Jugar de nuevo</button></div>';
+}
+
+function renderRiddle(stage){
+  var c = document.getElementById('content');
+  c.innerHTML =
+    '<p class="kicker">' + stage.kicker + '</p>' +
+    '<p class="manual-step">' + stage.manualStep + '</p>' +
+    (stage.tag ? '<p class="villain-tag">' + stage.tag + '</p>' : '') +
+    '<h1>' + stage.title + '</h1>' +
+    '<p class="riddle-text" style="border-left-color:' + stage.accent + '">' + stage.riddle + '</p>' +
+    '<div class="brick-divider"><span class="line"></span>' + brickSVG(stage.accent) + '<span class="line"></span></div>' +
+    '<input type="text" id="answerInput" placeholder="Escribe tu respuesta" autocomplete="off">' +
+    '<p class="err" id="errMsg">Escribe una respuesta antes de continuar.</p>' +
+    '<div class="row">' +
+      '<button onclick="checkAnswer(' + stage.id + ')">Resolver</button>' +
+    '</div>' +
+    '<p class="feedback" id="feedback"></p>' +
+    '<button class="hint-toggle" onclick="toggleHint()">¿Necesitas una pista?</button>' +
+    '<p class="hint-text" id="hintText">' + stage.hint + '</p>';
+
+  var input = document.getElementById('answerInput');
+  input.addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){ checkAnswer(stage.id); }
+  });
+  input.addEventListener('input', function(){
+    document.getElementById('errMsg').style.display = 'none';
+  });
+}
+
+function toggleHint(){
+  var h = document.getElementById('hintText');
+  h.style.display = h.style.display === 'block' ? 'none' : 'block';
+}
+
+function checkAnswer(id){
+  var stage = stages.filter(function(s){ return s.id === id; })[0];
+  var input = document.getElementById('answerInput');
+  var val = input.value;
+  var err = document.getElementById('errMsg');
+  var fb = document.getElementById('feedback');
+
+  if(!val || !val.trim()){
+    err.style.display = 'block';
+    return;
+  }
+  err.style.display = 'none';
+
+  var norm = normalize(val);
+  var correct = stage.answers.some(function(a){ return normalize(a) === norm; });
+
+  if(correct){
+    fb.className = 'feedback right';
+    fb.textContent = '¡Clic! Pieza encajada correctamente.';
+    setTimeout(function(){ goTo(current + 1); }, 700);
+  } else {
+    fb.className = 'feedback wrong';
+    var lines = stage.wrongLines;
+    fb.textContent = lines[Math.floor(Math.random() * lines.length)];
+  }
+}
+
+function goTo(index){
+  current = index;
+  renderTabs();
+  renderProgress();
+  var stage = stages[current];
+  if(stage.type === 'intro'){ renderIntro(); }
+  else if(stage.type === 'reveal'){ renderReveal(); document.getElementById('progressNote').textContent=''; }
+  else { renderRiddle(stage); }
+}
+
+buildStuds();
+goTo(0);
+</script>
+
+</body>
+</html>
